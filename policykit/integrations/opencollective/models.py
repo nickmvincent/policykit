@@ -17,6 +17,7 @@ class OpencollectiveCommunity(CommunityPlatform):
     team_id = models.CharField("team_id", max_length=150, unique=True)
 
     def post_message(self, proposal, text, expense_id):
+        # TODO NMV
         # TODO: could use the 'proposal' to try to infer the expense_id (if proposal was triggered by an expense event)
 
         mg_community = metagov.get_community(self.community.metagov_slug)
@@ -24,6 +25,16 @@ class OpencollectiveCommunity(CommunityPlatform):
             plugin_name="opencollective",
             action_id="create-comment",
             parameters={"raw": text, "expense_id": expense_id},
+            jsonschema_validation=True,
+            community_platform_id=self.team_id,
+        )
+
+    def start_conversation(self, text):
+        mg_community = metagov.get_community(self.community.metagov_slug)
+        return mg_community.perform_action(
+            plugin_name="opencollective",
+            action_id="create-conversation",
+            parameters={"raw": text, "collective_id": self.team_id},
             jsonschema_validation=True,
             community_platform_id=self.team_id,
         )
