@@ -16,7 +16,13 @@ class OpencollectiveCommunity(CommunityPlatform):
 
     team_id = models.CharField("team_id", max_length=150, unique=True)
 
-    def post_message(self, text, expense_id):
+    def post_message(self, proposal, text, expense_id):
+        """
+        Proposal is unused, but keep it here because of shimming!
+        (all post_message definitions expect a proposal arg as seecond arg)
+
+        Text is the text to be posted, expense_id is the OpenCollective expense id
+        """
 
         mg_community = metagov.get_community(self.community.metagov_slug)
         return mg_community.perform_action(
