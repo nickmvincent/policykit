@@ -6,7 +6,7 @@
         "initialize": [], 
         "check": {
                 "name": "main",
-                "codes": "if not proposal.vote_post_id:\n  return None\n\nyes_votes = proposal.get_yes_votes().count()\nno_votes = proposal.get_no_votes().count()\nproposal.data.set(\"yes_votes_num\", yes_votes)\nproposal.data.set(\"no_votes_num\", no_votes)\nlogger.debug(f\"{yes_votes} for, {no_votes} against\")\nif yes_votes >= 1:\n  return PASSED\nelif no_votes >= variables.maximum_no_allowed:\n  return FAILED\n\nreturn PROPOSED\n"
+                "codes": "\nif not proposal.vote_post_id:\n    return None\nyes_votes = proposal.get_yes_votes().count()\nno_votes = proposal.get_no_votes().count()\nlogger.debug(f\"{yes_votes} for, {no_votes} against\")\nnow = datetime.datetime.now().timestamp()\nreminder_delta = now - float(proposal.data.get(\"reminder_sent\"))\nif datetime.timedelta(seconds=int(reminder_delta)) > datetime.timedelta(days=variables.reminder_window_in_days):\n    proposal.data.set(\"reminder_sent\", now)\n    already_voted = proposal.get_all_boolean_votes().values_list(\"user__username\")\n    already_voted_list = [voter[0] for voter in already_voted]\n    nonvoter_list = [f\"<@{uid}>\" for uid in variables.users if uid not in already_voted_list]\n    nonvoter_string = \", \".join(nonvoter_list)\n    voter_msg = f\"Eligible voters: {variables.users}; Already voted: {already_voted}; Nonvoter list: {nonvoter_list}\"\n    slack.post_message(text=voter_msg, channel=variables.vote_channel, thread_ts=proposal.vote_post_id)\n    reminder_msg = f\"Please vote on this proposal. {nonvoter_string} have not voted yet.\"\n    slack.post_message(text=reminder_msg, channel=variables.vote_channel, thread_ts=proposal.vote_post_id)\n# slack.post_message(text=\"Ran a check\", channel=variables.vote_channel, thread_ts=proposal.vote_post_id)\nif yes_votes >= 1:\n    return PASSED\nelif no_votes >= variables.no_votes_to_fail:\n    return FAILED\nreturn PROPOSED"
         },
         "notify": [
             {
@@ -59,7 +59,7 @@
         "variables": [
             {
                 "name": "users",
-                "label": "Select all users who are eligble to vote.",
+                "label": "Users who are eligble to vote.",
                 "entity": "SlackUser",
                 "default_value": "",
                 "is_required": true,
@@ -69,7 +69,7 @@
             },
             {
                 "name": "vote_message",
-                "label": "You can write a custom message here that will be posted when a vote is started.",
+                "label": "You can write a custom message here that will be posted when a vote is started, or leave blank.",
                 "entity": null,
                 "default_value": "",
                 "is_required": true,
@@ -87,10 +87,20 @@
                 "is_list": false
             },
             {
-                "name": "num_no_votes_to_reject",
-                "label": "# of 'no' votes at which we reject",
+                "name": "no_votes_to_fail",
+                "label": "# of no votes at which we reject",
                 "entity": null,
                 "default_value": 1,
+                "is_required": true,
+                "prompt": "",
+                "type": "number",
+                "is_list": false
+            },
+            {
+                "name": "reminder_window_in_days",
+                "label": "Every _ days, send a reminder to eligible voters who have not voted (set a high number if you do not need reminders).",
+                "entity": null,
+                "default_value": 2,
                 "is_required": true,
                 "prompt": "",
                 "type": "number",
@@ -125,7 +135,7 @@
         "initialize": [], 
         "check": {
                 "name": "main",
-                "codes": "if not proposal.vote_post_id:\n  return None\n\nyes_votes = proposal.get_yes_votes().count()\nno_votes = proposal.get_no_votes().count()\nproposal.data.set(\"yes_votes_num\", yes_votes)\nproposal.data.set(\"no_votes_num\", no_votes)\nlogger.debug(f\"{yes_votes} for, {no_votes} against\")\nif yes_votes >= len(variables.users) / 2:\n  return PASSED\nelif no_votes >= len(variables.users) / 2:\n  return FAILED\n\nreturn PROPOSED\n"
+                "codes": "\nif not proposal.vote_post_id:\n    return None\nyes_votes = proposal.get_yes_votes().count()\nno_votes = proposal.get_no_votes().count()\nlogger.debug(f\"{yes_votes} for, {no_votes} against\")\nnow = datetime.datetime.now().timestamp()\nreminder_delta = now - float(proposal.data.get(\"reminder_sent\"))\nif datetime.timedelta(seconds=int(reminder_delta)) > datetime.timedelta(days=variables.reminder_window_in_days):\n    proposal.data.set(\"reminder_sent\", now)\n    already_voted = proposal.get_all_boolean_votes().values_list(\"user__username\")\n    already_voted_list = [voter[0] for voter in already_voted]\n    nonvoter_list = [f\"<@{uid}>\" for uid in variables.users if uid not in already_voted_list]\n    nonvoter_string = \", \".join(nonvoter_list)\n    voter_msg = f\"Eligible voters: {variables.users}; Already voted: {already_voted}; Nonvoter list: {nonvoter_list}\"\n    slack.post_message(text=voter_msg, channel=variables.vote_channel, thread_ts=proposal.vote_post_id)\n    reminder_msg = f\"Please vote on this proposal. {nonvoter_string} have not voted yet.\"\n    slack.post_message(text=reminder_msg, channel=variables.vote_channel, thread_ts=proposal.vote_post_id)\nif yes_votes >= len(variables.users) / 2:\n  return PASSED\nelif no_votes >= len(variables.users) / 2:\n  return FAILED\n\nreturn PROPOSED"
         },
         "notify": [
             {
@@ -178,18 +188,18 @@
         "variables": [
             {
                 "name": "users",
-                "label": "Select all users who are eligble to vote.",
+                "label": "Users who are eligble to vote.",
                 "entity": "SlackUser",
                 "default_value": "",
-                "is_required": false,
-                "prompt": "An empty value represents that all people in the channel are eligible to vote. If there are multiple users, separate them by commas",
+                "is_required": true,
+                "prompt": "",
                 "type": "string",
                 "is_list": true
                 
             },
             {
                 "name": "vote_message",
-                "label": "Message to be posted in the channel when the vote starts",
+                "label": "Message to be posted in the channel when the vote starts.",
                 "entity": null,
                 "default_value": "Majority vote started: vote with :thumbsup: or :thumbsdown: on this post.",
                 "is_required": true,
@@ -204,6 +214,16 @@
                 "is_required": false,
                 "prompt": "",
                 "type": "string",
+                "is_list": false
+            },
+            {
+                "name": "reminder_window_in_days",
+                "label": "Every _ days, send a reminder to eligible voters who have not voted (set a high number if you do not need reminders).",
+                "entity": null,
+                "default_value": 2,
+                "is_required": true,
+                "prompt": "",
+                "type": "number",
                 "is_list": false
             }
         ],
@@ -291,8 +311,8 @@
                 "label": "Select all users who are eligble to vote.",
                 "entity": "SlackUser",
                 "default_value": "",
-                "is_required": false,
-                "prompt": "An empty value represents that all people in the channel are eligible to vote. If there are multiple users, separate them by commas",
+                "is_required": true,
+                "prompt": "",
                 "type": "string",
                 "is_list": true
                 
@@ -314,6 +334,16 @@
                 "is_required": false,
                 "prompt": "",
                 "type": "string",
+                "is_list": false
+            },
+            {
+                "name": "reminder_window_in_days",
+                "label": "Every _ days, send a reminder to eligible voters who have not voted (set a high number if you do not need reminders).",
+                "entity": null,
+                "default_value": 2,
+                "is_required": true,
+                "prompt": "",
+                "type": "number",
                 "is_list": false
             }
         ],
@@ -402,7 +432,7 @@
                 "entity": "SlackUser",
                 "default_value": "",
                 "is_required": false,
-                "prompt": "An empty value represents that all people in the channel are eligible to vote. If there are multiple users, separate them by commas",
+                "prompt": "An empty value represents that all people in the channel are eligible to vote.",
                 "type": "string",
                 "is_list": true
                 
@@ -429,7 +459,7 @@
             },
             {
                 "name": "vote_message",
-                "label": "Message to be posed in the channel when the vote starts",
+                "label": "Message to be posted in the channel when the vote starts",
                 "entity": null,
                 "default_value": "Start a yes-no vote: vote with :thumbsup: or :thumbsdown: on this post.",
                 "is_required": true,
@@ -444,6 +474,16 @@
                 "is_required": false,
                 "prompt": "",
                 "type": "string",
+                "is_list": false
+            },
+            {
+                "name": "reminder_window_in_days",
+                "label": "Every _ days, send a reminder to eligible voters who have not voted (set a high number if you do not need reminders).",
+                "entity": null,
+                "default_value": 2,
+                "is_required": true,
+                "prompt": "",
+                "type": "number",
                 "is_list": false
             }
         ],
