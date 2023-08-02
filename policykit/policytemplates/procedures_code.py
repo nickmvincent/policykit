@@ -1,11 +1,12 @@
 # In procedures.json, we store some python code blocks
 # (e.g., notify, check)
-# as a string entries in a json object
+# as a string entries named "codes' in a json object
 
-# the purpose of this file is to duplicate that code in a .py file 
-# so we can benefit from code linting and formatting
+# the purpose of this file is to write that code in a .py file 
+# so we can benefit from code linting and formatting. 
+# Then we take that formatted / linted code, and paste it into the json.
 
-# if developers are regularly editing procedure template code in the json file,
+# If developers are regularly editing procedure template code in the json file,
 # we might expect the rate of typos and bugs to be quite high
 
 
@@ -45,13 +46,12 @@ def peer_approval__check():
         already_voted_list = [voter[0] for voter in already_voted]
         nonvoter_list = [f'<@{uid}>' for uid in variables.users if uid not in already_voted_list]
         nonvoter_string = ', '.join(nonvoter_list)
-        voter_msg = f'Eligible voters: {variables.users}; Already voted: {already_voted}; Nonvoter list: {nonvoter_list}'
-        slack.post_message(text=voter_msg, channel=variables.vote_channel, thread_ts=proposal.vote_post_id)
+        # Uncomment to also post full list of eligible voters with each reminder.
+        # voter_msg = f'Eligible voters: {variables.users}; Already voted: {already_voted}; Nonvoter list: {nonvoter_list}'
+        # slack.post_message(text=voter_msg, channel=variables.vote_channel, thread_ts=proposal.vote_post_id)
 
         reminder_msg = f'Please vote on this proposal. {nonvoter_string} have not voted yet.'
         slack.post_message(text=reminder_msg, channel=variables.vote_channel, thread_ts=proposal.vote_post_id)
-
-    # slack.post_message(text='Ran a check', channel=variables.vote_channel, thread_ts=proposal.vote_post_id)
 
     if yes_votes >= 1:
         return PASSED
@@ -69,7 +69,12 @@ def majority_vote__check():
     logger.debug(f'{yes_votes} for, {no_votes} against')
 
     now = datetime.datetime.now().timestamp()
-    reminder_delta = now - float(proposal.data.get('reminder_sent'))
+    last_timestamp = proposal.data.get('reminder_sent')
+    if last_timestamp is None: # it's the first run
+       proposal.data.set('reminder_sent', now)
+       return PROPOSED
+       
+    reminder_delta = now - float(last_timestamp)
 
     if datetime.timedelta(seconds=int(reminder_delta)) > datetime.timedelta(days=variables.reminder_window_in_days):
         proposal.data.set('reminder_sent', now)
@@ -78,9 +83,10 @@ def majority_vote__check():
         already_voted_list = [voter[0] for voter in already_voted]
         nonvoter_list = [f'<@{uid}>' for uid in variables.users if uid not in already_voted_list]
         nonvoter_string = ', '.join(nonvoter_list)
-        voter_msg = f'Eligible voters: {variables.users}; Already voted: {already_voted}; Nonvoter list: {nonvoter_list}'
-        slack.post_message(text=voter_msg, channel=variables.vote_channel, thread_ts=proposal.vote_post_id)
+        # Uncomment to also post full list of eligible voters with each reminder.
 
+        # voter_msg = f'Eligible voters: {variables.users}; Already voted: {already_voted}; Have not voted yet list: {nonvoter_list}'
+        # slack.post_message(text=voter_msg, channel=variables.vote_channel, thread_ts=proposal.vote_post_id)
         reminder_msg = f'Please vote on this proposal. {nonvoter_string} have not voted yet.'
         slack.post_message(text=reminder_msg, channel=variables.vote_channel, thread_ts=proposal.vote_post_id)
 
@@ -109,8 +115,9 @@ def consensus__check():
         already_voted_list = [voter[0] for voter in already_voted]
         nonvoter_list = [f'<@{uid}>' for uid in variables.users if uid not in already_voted_list]
         nonvoter_string = ', '.join(nonvoter_list)
-        voter_msg = f'Eligible voters: {variables.users}; Already voted: {already_voted}; Nonvoter list: {nonvoter_list}'
-        slack.post_message(text=voter_msg, channel=variables.vote_channel, thread_ts=proposal.vote_post_id)
+        # Uncomment to also post full list of eligible voters with each reminder.
+        # voter_msg = f'Eligible voters: {variables.users}; Already voted: {already_voted}; Nonvoter list: {nonvoter_list}'
+        # slack.post_message(text=voter_msg, channel=variables.vote_channel, thread_ts=proposal.vote_post_id)
 
         reminder_msg = f'Please vote on this proposal. {nonvoter_string} have not voted yet.'
         slack.post_message(text=reminder_msg, channel=variables.vote_channel, thread_ts=proposal.vote_post_id)
@@ -142,8 +149,9 @@ def custom_voting__check():
         already_voted_list = [voter[0] for voter in already_voted]
         nonvoter_list = [f'<@{uid}>' for uid in variables.users if uid not in already_voted_list]
         nonvoter_string = ', '.join(nonvoter_list)
-        voter_msg = f'Eligible voters: {variables.users}; Already voted: {already_voted}; Nonvoter list: {nonvoter_list}'
-        slack.post_message(text=voter_msg, channel=variables.vote_channel, thread_ts=proposal.vote_post_id)
+        # Uncomment to also post full list of eligible voters with each reminder.
+        # voter_msg = f'Eligible voters: {variables.users}; Already voted: {already_voted}; Nonvoter list: {nonvoter_list}'
+        # slack.post_message(text=voter_msg, channel=variables.vote_channel, thread_ts=proposal.vote_post_id)
 
         reminder_msg = f'Please vote on this proposal. {nonvoter_string} have not voted yet.'
         slack.post_message(text=reminder_msg, channel=variables.vote_channel, thread_ts=proposal.vote_post_id)
@@ -178,4 +186,19 @@ print()
 # print_for_json(custom_voting__check)
 # print()
 
+# In current state, this script does NOT overwrite any json data itself. You will need
+# manually overwrite the appropriate "codes" entry in procedures.json
 
+# previously, the same effect was accomplished by just manually editing codes.
+
+
+
+
+# to enable comment-to-oc feature, paste the following into the "notify" field
+
+# {
+#     "action": "slackpostmessage",
+#     "message": "f\"slack.post_message(text=f\"Enter this code to comment on oc: send-comment-to-oc||{action.expense_id}||<your-comment-here>\", channel=variables.vote_channel, thread_ts=proposal.vote_post_id)\"",
+#     "channel":  "variables.vote_channel",
+#     "thread": "proposal.vote_post_id"
+# }
