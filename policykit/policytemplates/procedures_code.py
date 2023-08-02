@@ -180,11 +180,11 @@ print()
 print_for_json(majority_vote__check)
 print()
 
-# print_for_json(consensus__check)
-# print()
+print_for_json(consensus__check)
+print()
 
-# print_for_json(custom_voting__check)
-# print()
+print_for_json(custom_voting__check)
+print()
 
 # In current state, this script does NOT overwrite any json data itself. You will need
 # manually overwrite the appropriate "codes" entry in procedures.json
