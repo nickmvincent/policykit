@@ -37,6 +37,10 @@ def peer_approval__check():
     logger.debug(f'{yes_votes} for, {no_votes} against')
 
     now = datetime.datetime.now().timestamp()
+
+    if proposal.data.get('reminder_sent') is None:
+        proposal.data.set('reminder_sent', now)
+        return PROPOSED
     reminder_delta = now - float(proposal.data.get('reminder_sent'))
 
     if datetime.timedelta(seconds=int(reminder_delta)) > datetime.timedelta(days=variables.reminder_window_in_days):
@@ -69,6 +73,11 @@ def majority_vote__check():
     logger.debug(f'{yes_votes} for, {no_votes} against')
 
     now = datetime.datetime.now().timestamp()
+
+    if proposal.data.get('reminder_sent') is None:
+        proposal.data.set('reminder_sent', now)
+        return PROPOSED
+    
     last_timestamp = proposal.data.get('reminder_sent')
     if last_timestamp is None: # it's the first run
        proposal.data.set('reminder_sent', now)
@@ -106,6 +115,10 @@ def consensus__check():
     logger.debug(f'{yes_votes} for, {no_votes} against')
 
     now = datetime.datetime.now().timestamp()
+    if proposal.data.get('reminder_sent') is None:
+        proposal.data.set('reminder_sent', now)
+        return PROPOSED
+
     reminder_delta = now - float(proposal.data.get('reminder_sent'))
 
     if datetime.timedelta(seconds=int(reminder_delta)) > datetime.timedelta(days=variables.reminder_window_in_days):
@@ -140,6 +153,10 @@ def custom_voting__check():
     logger.debug(f'{yes_votes} for, {no_votes} against')
 
     now = datetime.datetime.now().timestamp()
+    if proposal.data.get('reminder_sent') is None:
+        proposal.data.set('reminder_sent', now)
+        return PROPOSED
+
     reminder_delta = now - float(proposal.data.get('reminder_sent'))
 
     if datetime.timedelta(seconds=int(reminder_delta)) > datetime.timedelta(days=variables.reminder_window_in_days):
